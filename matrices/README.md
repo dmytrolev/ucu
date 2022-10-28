@@ -15,7 +15,7 @@ echo 128 | ./a.out > s128.txt
 # Compile solver
 
 ```
-g++ --std=c++17 main.cc
+g++ -march=native -mtune=native -O3 -std=c++17 main.cc
 ```
 
 ## Test solver
