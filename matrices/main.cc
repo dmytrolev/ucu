@@ -136,9 +136,9 @@ void SetMatrix(Matrix &out, Matrix in, int R, int C, int s) {
   }
 }
 
-template<typename Mult, typename Add, typename Sub>
+template<int limit, typename Mult, typename Add, typename Sub>
 Matrix SmartMult(Mult mult, Add add, Sub sub, Matrix &left, Matrix &right, int R1, int C1, int R2, int C2, int s) {
-  if(s <= 64) {
+  if(s <= limit) {
     return mult(left, right, R1, C1, R2, C2, s);
   }
   Matrix res(s);
@@ -147,28 +147,28 @@ Matrix SmartMult(Mult mult, Add add, Sub sub, Matrix &left, Matrix &right, int R
   int s2 = s / 2;
 
   Matrix P1r = sub(right, right, R2, C2 + s2, R2 + s2, C2 + s2, s2);
-  Matrix P1 = SmartMult(mult, add, sub,  left, P1r, R1, C1, 0, 0, s2);
+  Matrix P1 = SmartMult<limit>(mult, add, sub,  left, P1r, R1, C1, 0, 0, s2);
 
   Matrix P2l = add(left, left, R1, C1, R1, C1 + s2, s2);
-  Matrix P2 = SmartMult(mult, add, sub,  P2l, right, 0, 0, R2 + s2, C2 + s2, s2);
+  Matrix P2 = SmartMult<limit>(mult, add, sub,  P2l, right, 0, 0, R2 + s2, C2 + s2, s2);
 
   Matrix P3l = add(left, left, R1 + s2, C1, R1 + s2, C1 + s2, s2);
-  Matrix P3 = SmartMult(mult, add, sub,  P3l, right, 0, 0, R2, C2, s2);
+  Matrix P3 = SmartMult<limit>(mult, add, sub,  P3l, right, 0, 0, R2, C2, s2);
 
   Matrix P4r = sub(right, right, R2 + s2, C2, R2, C2, s2);
-  Matrix P4 = SmartMult(mult, add, sub,  left, P4r, R1 + s2, C1 + s2, 0, 0, s2);
+  Matrix P4 = SmartMult<limit>(mult, add, sub,  left, P4r, R1 + s2, C1 + s2, 0, 0, s2);
 
   Matrix P5l = add(left, left, R1, C1, R1 + s2, C1 + s2, s2);
   Matrix P5r = add(right, right, R2, C2, R2 + s2, C2 + s2, s2);
-  Matrix P5 = SmartMult(mult, add, sub,  P5l, P5r, 0, 0, 0, 0, s2);
+  Matrix P5 = SmartMult<limit>(mult, add, sub,  P5l, P5r, 0, 0, 0, 0, s2);
 
   Matrix P6l = sub(left, left, R1, C1 + s2, R1 + s2, C1 + s2, s2);
   Matrix P6r = add(right, right, R2 + s2, C2, R2 + s2, C2 + s2, s2);
-  Matrix P6 = SmartMult(mult, add, sub,  P6l, P6r, 0, 0, 0, 0, s2);
+  Matrix P6 = SmartMult<limit>(mult, add, sub,  P6l, P6r, 0, 0, 0, 0, s2);
 
   Matrix P7l = sub(left, left, R1, C1, R1 + s2, C1, s2);
   Matrix P7r = add(right, right, R2, C2, R2, C2 + s2, s2);
-  Matrix P7 = SmartMult(mult, add, sub,  P7l, P7r, 0, 0, 0, 0, s2);
+  Matrix P7 = SmartMult<limit>(mult, add, sub,  P7l, P7r, 0, 0, 0, 0, s2);
 
   Matrix left1 = add(P5, P4, 0, 0, 0, 0, s2);
   Matrix right1 = sub(P2, P6, 0, 0, 0, 0, s2);
@@ -202,42 +202,63 @@ int main() {
   Matrix m1 = ReadMatrix(N);
   Matrix m2 = ReadMatrix(N);
   time_t end = std::time(nullptr);
-  std::cout << "Read time: " << (end - start) << " seconds.\n";
+  time_t t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
 
   start = std::time(nullptr);
   Matrix res1 = SimpleMult(m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Simple time: " << (end - start) << " seconds.\n";
+  t1 = end - start;
 
   start = std::time(nullptr);
   Matrix res2 = CachedMult(m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Cached time: " << (end - start) << " seconds.\n";
+  t2 = end - start;
 
   start = std::time(nullptr);
   Matrix res3 = CachedMultWithSSE(m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Cached with SSE time: " << (end - start) << " seconds.\n";
+  t3 = end - start;
 
   start = std::time(nullptr);
-  Matrix res4 = SmartMult(SimpleMult, Add, Sub, m1, m2, 0, 0, 0, 0, N);
+  Matrix res4 = SmartMult<64>(SimpleMult, Add, Sub, m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Smart time with simple mult: " << (end - start) << " seconds.\n";
+  t4 = end - start;
 
   start = std::time(nullptr);
-  Matrix res5 = SmartMult(CachedMult, Add, Sub, m1, m2, 0, 0, 0, 0, N);
+  Matrix res5 = SmartMult<64>(CachedMult, Add, Sub, m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Smart time with cached mult: " << (end - start) << " seconds.\n";
+  t5 = end - start;
 
   start = std::time(nullptr);
-  Matrix res6 = SmartMult(CachedMultWithSSE, Add, Sub, m1, m2, 0, 0, 0, 0, N);
+  Matrix res6 = SmartMult<32>(CachedMultWithSSE, Add, Sub, m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Smart time with Cached Mult+SSE: " << (end - start) << " seconds.\n";
+  t6 = end - start;
 
   start = std::time(nullptr);
-  Matrix res7 = SmartMult(CachedMultWithSSE, AddWithSSE, SubWithSSE, m1, m2, 0, 0, 0, 0, N);
+  Matrix res7 = SmartMult<64>(CachedMultWithSSE, Add, Sub, m1, m2, 0, 0, 0, 0, N);
   end = std::time(nullptr);
-  std::cout << "Smart time with Mult+SSE and Add/Sub+SSE: " << (end - start) << " seconds.\n";
+  t7 = end - start;
 
-  // std::cout << (CompareMatrix(res2, res4) ? "SSE work!\n" : "SSE failed!\n");
+  start = std::time(nullptr);
+  Matrix res8 = SmartMult<128>(CachedMultWithSSE, Add, Sub, m1, m2, 0, 0, 0, 0, N);
+  end = std::time(nullptr);
+  t8 = end - start;
+
+  start = std::time(nullptr);
+  Matrix res9 = SmartMult<256>(CachedMultWithSSE, Add, Sub, m1, m2, 0, 0, 0, 0, N);
+  end = std::time(nullptr);
+  t9 = end - start;
+
+  start = std::time(nullptr);
+  Matrix res10 = SmartMult<64>(CachedMultWithSSE, AddWithSSE, SubWithSSE, m1, m2, 0, 0, 0, 0, N);
+  end = std::time(nullptr);
+  t10 = end - start;
+
+  if(!CompareMatrix(res1, res2) ||!CompareMatrix(res1, res3) ||!CompareMatrix(res1, res4) ||
+     !CompareMatrix(res1, res5) ||!CompareMatrix(res1, res6) ||!CompareMatrix(res1, res7) ||
+     !CompareMatrix(res1, res8) ||!CompareMatrix(res1, res9) ||!CompareMatrix(res1, res10)) {
+    std::cerr << "Failed!" << std::endl;
+    return -1;
+  }
+  std::cout << t1 << "," << t2 << "," << t3 << "," << t4 << "," << t5 << "," << t6 << "," << t7 << "," << t8 << "," << t9 << "," << t10 << "\n";
 }
