@@ -31,15 +31,15 @@ pub fn Matrix(comptime T: type) type {
 
         pub fn copy(a: @This(), m: []Vec) @This() {
             const res = of(a.rows, a.cols, m);
-            for (range(a.rows)) |_, row| mem.copy(Vec, res.rowAt(row), a.rowAt(row));
+            for (0..a.rows) |row| mem.copy(Vec, res.rowAt(row), a.rowAt(row));
             return res;
         }
 
         pub fn copyTransposed(a: @This(), m: []Vec) @This() {
             const res = of(a.rows, a.cols, m);
-            for (range(a.rows)) |_, row| {
-                for (a.rowAt(row)) |v, vcol| {
-                    inline for (comptime range(length(Vec))) |_, k| {
+            for (0..a.rows) |row| {
+                for (a.rowAt(row), 0..) |v, vcol| {
+                    inline for (comptime 0..length(Vec)) |k| {
                         const col = vcol*length(Vec) + k;
                         res.set(col, row, v[k]);
                     }
@@ -66,24 +66,22 @@ pub fn Matrix(comptime T: type) type {
         }
 
         pub inline fn setAll(a: @This(), v: Elem) @This() {
-            for (range(a.rows)) |_, row| mem.set(Vec, a.rowAt(row), @splat(length(Vec), v));
+            for (0..a.rows) |row| @memset(a.rowAt(row), @splat(length(Vec), v));
             return a;
         }
 
         pub fn add(res: @This(), a: @This()) @This() {
             std.debug.assert(res.rows == a.rows and res.cols == a.cols);
-            for (range(a.rows)) |_, row| {
-                const r = res.rowAt(row);
-                for (a.rowAt(row)) |v, i| r[i] += v;
+            for (0..a.rows) |row| {
+                for (res.rowAt(row), a.rowAt(row)) |*r, v| r.* += v;
             }
             return res;
         }
 
         pub fn sub(res: @This(), a: @This()) @This() {
             std.debug.assert(res.rows == a.rows and res.cols == a.cols);
-            for (range(a.rows)) |_, row| {
-                const r = res.rowAt(row);
-                for (a.rowAt(row)) |v, i| r[i] -= v;
+            for (0..a.rows) |row| {
+                for (res.rowAt(row), a.rowAt(row)) |*r, v| r.* -= v;
             }
             return res;
         }
@@ -148,10 +146,10 @@ pub fn Matrix(comptime T: type) type {
 
         pub fn addProductRhsTransposed(res: @This(), a: @This(), bT: @This()) void {
             std.debug.assert(res.rows == a.rows and res.cols == bT.rows and a.cols == bT.cols);
-            for (range(res.cols)) |_, col| {
-                for (range(res.rows)) |_, row| {
+            for (0..res.cols) |col| {
+                for (0..res.rows) |row| {
                     var sum = @splat(length(Vec), @as(Elem, 0));
-                    for (a.rowAt(row)) |v, i| {
+                    for (a.rowAt(row), 0..) |v, i| {
                         sum += v * bT.m[col*bT.stride + i];
                     }
                     const v = res.get(row, col) + @reduce(.Add, sum);
@@ -161,9 +159,9 @@ pub fn Matrix(comptime T: type) type {
         }
 
         pub fn print(a: @This(), writer: anytype) !void {
-            for (range(a.rows)) |_, row| {
+            for (0..a.rows) |row| {
                 for (a.rowAt(row)) |v| {
-                    inline for (comptime range(length(Vec))) |_, k| {
+                    inline for (comptime 0..length(Vec)) |k| {
                         try writer.print("{} ", .{v[k]});
                     }
                 }
@@ -171,12 +169,6 @@ pub fn Matrix(comptime T: type) type {
             }
         }
     };
-}
-
-inline fn range(len: usize) []const void {
-    var res: []const void = &.{};
-    res.len = len;
-    return res;
 }
 
 fn length(comptime V: type) comptime_int { return @typeInfo(V).Vector.len; }
@@ -190,7 +182,7 @@ fn readMatrix(allocator: mem.Allocator, comptime T: type, rows: u16, cols: u16, 
     const res = try Matrix(T).initUndefined(allocator, rows, cols);
     errdefer res.deinit(allocator);
     for (res.items()) |*v| {
-        inline for (comptime range(length(Matrix(T).Vec))) |_, k| {
+        inline for (comptime 0..length(Matrix(T).Vec)) |k| {
             v.*[k] = try readInt(T, tokens);
         }
     }
