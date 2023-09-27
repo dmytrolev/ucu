@@ -31,7 +31,7 @@ pub fn Matrix(comptime T: type) type {
 
         pub fn copy(a: @This(), m: []Vec) @This() {
             const res = of(a.rows, a.cols, m);
-            for (0..a.rows) |row| mem.copy(Vec, res.rowAt(row), a.rowAt(row));
+            for (0..a.rows) |row| @memcpy(res.rowAt(row), a.rowAt(row));
             return res;
         }
 
@@ -66,7 +66,8 @@ pub fn Matrix(comptime T: type) type {
         }
 
         pub inline fn setAll(a: @This(), v: Elem) @This() {
-            for (0..a.rows) |row| @memset(a.rowAt(row), @splat(length(Vec), v));
+            const r: Vec = @splat(v);
+            for (0..a.rows) |row| @memset(a.rowAt(row), r);
             return a;
         }
 
@@ -148,7 +149,7 @@ pub fn Matrix(comptime T: type) type {
             std.debug.assert(res.rows == a.rows and res.cols == bT.rows and a.cols == bT.cols);
             for (0..res.cols) |col| {
                 for (0..res.rows) |row| {
-                    var sum = @splat(length(Vec), @as(Elem, 0));
+                    var sum: Vec = @splat(0);
                     for (a.rowAt(row), 0..) |v, i| {
                         sum += v * bT.m[col*bT.stride + i];
                     }
@@ -173,12 +174,12 @@ pub fn Matrix(comptime T: type) type {
 
 fn length(comptime V: type) comptime_int { return @typeInfo(V).Vector.len; }
 
-fn readInt(comptime T: type, tokens: *mem.TokenIterator(u8)) !T {
+fn readInt(comptime T: type, tokens: *mem.TokenIterator(u8, .any)) !T {
     const token = tokens.next() orelse return error.Eof;
     return try std.fmt.parseInt(T, token, 10);
 }
 
-fn readMatrix(allocator: mem.Allocator, comptime T: type, rows: u16, cols: u16, tokens: *mem.TokenIterator(u8)) !Matrix(T) {
+fn readMatrix(allocator: mem.Allocator, comptime T: type, rows: u16, cols: u16, tokens: *mem.TokenIterator(u8, .any)) !Matrix(T) {
     const res = try Matrix(T).initUndefined(allocator, rows, cols);
     errdefer res.deinit(allocator);
     for (res.items()) |*v| {
@@ -189,7 +190,7 @@ fn readMatrix(allocator: mem.Allocator, comptime T: type, rows: u16, cols: u16, 
     return res;
 }
 
-fn toSeconds(ns: u64) f64 { return 1e-3 * @intToFloat(f64, ns/1000_000); }
+fn toSeconds(ns: u64) f64 { return 1e-3 * @as(f64, @floatFromInt(ns/1000_000)); }
 
 pub fn main() !void {
     var timer = try std.time.Timer.start();
